@@ -21,6 +21,7 @@ def get_info(text):
     result = requests.get(url, params=params).json()
     pprint.pprint(result)
     final_result = []
+    vacancy_list = []
 
     for item in result['items']:
         city = item['area']['name']
@@ -45,31 +46,33 @@ def get_info(text):
         zp_id = cursor.execute(f'select id from zarplata where zarplata.name="{salary}"').fetchone()[0]
         cursor.execute('insert or ignore into vacancy (name,firma_id,city_id,zp_id,link_id) values(?,?,?,?,?)',
                        [position, firma_id, city_id, zp_id, link_id])
+        vacancy_list.append(cursor.execute(f'select id from vacancy where vacancy.link_id ="{link_id}"').fetchone()[0])
         conn.commit()
 
-    load_info(final_result)
+    load_info(final_result, vacancy_list)
     conn.close()
-    return final_result
+    return final_result,
 
 
-def load_info(final_result):
+def load_info(final_result, vacancy_list):
     conn = sqlite3.connect('C:/Users/Кирилл/Desktop/PYTHON/BD/api.db', check_same_thread=False)  # соединяем с бд
     cursor = conn.cursor()
-    query = 'select v.name, c.name, f.name, z.name, l.name ' \
-            'from vacancy v, city c, firma f, zarplata z, link l ' \
-            'where v.city_id=c.id and v.firma_id=f.id and v.link_id=l.id and v.zp_id=z.id'
-    cursor.execute(query)
-    result = cursor.fetchall()
-    for res in result:
-        line = ''
-        for i in res:
-            line += f'{i} '
-        final_result.append(line)
+    for vac in vacancy_list:
+        query = f'select v.name, c.name, f.name, z.name, l.name ' \
+                'from vacancy v, city c, firma f, zarplata z, link l ' \
+                f'where v.city_id=c.id and v.firma_id=f.id and v.link_id=l.id and v.zp_id=z.id and v.id="{vac}"'
+        cursor.execute(query)
+        result = cursor.fetchall()
+        for res in result:
+            line = ''
+            for i in res:
+                line += f'{i} '
+            final_result.append(line)
 
     return final_result
 
 
-text = 'Учитель'
+text = 'java'
 
 result = get_info(text)
 pprint.pprint(result)
